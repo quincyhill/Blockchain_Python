@@ -13,8 +13,8 @@ class User:
 
 
 class Todo:
-    def __init__(self, title: str, description: str):
-        self.user: User
+    def __init__(self, user: User, title: str, description: str):
+        self.user = user
         self.title = title
         self.description = description
         self.is_done = False
@@ -32,17 +32,19 @@ def introduction() -> None:
     username: str = input(
         "Welcome to " + Fore.RED + "Quincy's Todo command line program! " + Fore.WHITE + "to get started first enter your name: ")
     if len(user_list) == 0:
-        create_user(username=username)
+        create_user(username)
         print(f"No users were found created a new user: {username}")
     else:
         for user in user_list:
             if username != user.username:
-                create_user(username=username)
+                create_user(username)
                 print(f"Created new user \nHello {username}")
+                # NOTE: this break is problematic
                 break
             else:
                 current_user = user
                 print(f"Hello {username}")
+                # NOTE: this break is problematic
                 break
 
 
@@ -56,12 +58,13 @@ def make_connection(func: Callable) -> Callable:
         Callable: [description]
     """
     @functools.wraps(func)
-    def wrapper_make_connection(username: str) -> Callable:
+    def wrapper_make_connection(*args, **kwargs) -> Callable:
         action: Callable
         try:
             conn = sqlite3.connect(db_name)
             c = conn.cursor()
-            action = func(username, c)
+            kwargs['c'] = c
+            action = func(*args, **kwargs)
             conn.commit()
         except sqlite3.DatabaseError as e:
             print(e)
@@ -75,6 +78,7 @@ def make_connection(func: Callable) -> Callable:
     return wrapper_make_connection
 
 
+@make_connection
 def select_existing_user(user: User) -> None:
     # read users from database
     conn = sqlite3.connect(db_name)
@@ -84,6 +88,7 @@ def select_existing_user(user: User) -> None:
     pass
 
 
+@make_connection
 def select_new_user() -> None:
     # create a new user
     conn = sqlite3.connect(db_name)
@@ -104,49 +109,44 @@ def body() -> None:
 
 
 @make_connection
-def create_user(username: str, *args) -> None:
+def create_user(username: str, *args, **kwargs) -> None:
     new_user = User(username)
     global current_user
     current_user = new_user
     user_list.append(new_user)
     print(f"Username is {username}")
 
-    c: sqlite3.Cursor = args[0]
-    # f string is less secure but it worked so...
-    c.execute(f"INSERT INTO users VALUES ('{current_user.username}')")
+    # Add user to database
+    c: sqlite3.Cursor
+    c = kwargs['c']
+    c.execute(f"INSERT INTO users VALUES (?)", [current_user.username])
 
 
-def create_todo(title: str, description: str) -> None:
-    new_task = Todo(title, description)
+@make_connection
+def create_todo(title: str, description: str, *args, **kwargs) -> None:
     global current_user
+    new_todo = Todo(current_user, title, description)
     global current_todo
+    current_todo = new_todo
     current_todo.user = current_user
-
-    conn = sqlite3.connect(db_name)
-    c = conn.cursor()
 
     values = [current_user.username, title, description, False]
 
     # Add todo to database
+    c: sqlite3.Cursor
+    c = kwargs['c']
     c.execute("INSERT INTO todos VALUES (?,?,?,?)", values)
-    conn.commit()
-    conn.close()
 
 
-def init_users_and_todos() -> None:
-    try:
-        conn = sqlite3.connect(db_name)
-    except sqlite3.Error as e:
-        print(e)
-    c = conn.cursor()
+@make_connection
+def init_users_and_todos(*args, **kwargs) -> None:
+    c: sqlite3.Cursor
+    c = kwargs['c']
     # Create the table for users
-    c.execute('''CREATE TABLE users (username text)
-    ''')
+    c.execute("CREATE TABLE users (username text)")
     # Create the table for todos
-    c.execute('''CREATE TABLE todos (user text, title text, description text, is_done integer)
-    ''')
-    conn.commit()
-    conn.close()
+    c.execute(
+        "CREATE TABLE todos (user text, title text, description text, is_done integer)")
 
 
 def init_database() -> None:
@@ -166,10 +166,10 @@ def run() -> None:
     while not has_quit:
         number += 1
         introduction()
+        body()
         if number == 2:
             for user in user_list:
                 print("Username: ", user.username)
             has_quit = True
-
 
 run()
