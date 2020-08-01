@@ -1,4 +1,5 @@
-from typing import List
+from typing import List, Callable
+import functools
 import os
 import sqlite3
 import keyboard
@@ -31,18 +32,73 @@ def introduction() -> None:
     username: str = input(
         "Welcome to " + Fore.RED + "Quincy's Todo command line program! " + Fore.WHITE + "to get started first enter your name: ")
     if len(user_list) == 0:
-        create_user(username)
-        print(f"No users found created a new user: {username}")
+        create_user(username=username)
+        print(f"No users were found created a new user: {username}")
     else:
         for user in user_list:
             if username != user.username:
-                create_user(username)
+                create_user(username=username)
                 print(f"Created new user \nHello {username}")
                 break
             else:
                 current_user = user
                 print(f"Hello {username}")
                 break
+
+
+def make_connection(func: Callable) -> Callable:
+    """Sqlite3 decorator for accessing the database
+
+    Args:
+        func (Callable): [description]
+
+    Returns:
+        Callable: [description]
+    """
+    @functools.wraps(func)
+    def wrapper_make_connection(*args, **kwargs) -> Callable:
+        try:
+            conn = sqlite3.connect(db_name)
+            c = conn.cursor()
+            someNum = 23
+            for key, value in kwargs.items():
+                print(f" The key is = {key}: and the value is = {value}")
+            action = func(someNum, *args, **kwargs)
+            # conn.commit()
+        except sqlite3.DatabaseError as e:
+            print(e)
+        except sqlite3.DataError as e:
+            print(e)
+        except sqlite3.OperationalError as e:
+            print(e)
+        finally:
+            conn.close()
+        return action
+    return wrapper_make_connection
+
+
+def select_existing_user(user: User) -> None:
+    # read users from database
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    # match selected user to the one in the database
+
+    # set the current user to the selected user
+
+    pass
+
+
+def select_new_user() -> None:
+    # create a new user
+    conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+    for row in c.execute('SELECT * FROM users'):
+        print(row)
+
+    # write use to the database
+
+    # set the current user to the selected user
+    pass
 
 
 def body() -> None:
@@ -53,20 +109,19 @@ def body() -> None:
     create_todo(title, description)
 
 
-def create_user(username: str) -> None:
+@make_connection
+def create_user(username: str, *args) -> None:
     new_user = User(username)
     global current_user
     current_user = new_user
     user_list.append(new_user)
 
-    conn = sqlite3.connect(db_name)
-    c = conn.cursor()
+    for arg in args:
+        print("If this is successful it should print my number")
+        print(arg)
 
-    # Create a new user
-    c.execute("INSERT INTO users VALUES (?)", current_user.username)
-
-    conn.commit()
-    conn.close()
+    # # Create a new user
+    # c.execute("INSERT INTO users VALUES (?)", current_user.username)
 
 
 def create_todo(title: str, description: str) -> None:
@@ -119,7 +174,6 @@ def run() -> None:
     while not has_quit:
         number += 1
         introduction()
-        body()
         if number == 2:
             for user in user_list:
                 print("Username: ", user.username)
