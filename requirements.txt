@@ -1,0 +1,4 @@
+colorama==0.4.3
+mypy==0.782
+keyboard==0.13.5
+autopep8==1.5.3
