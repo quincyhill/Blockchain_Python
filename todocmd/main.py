@@ -56,15 +56,13 @@ def make_connection(func: Callable) -> Callable:
         Callable: [description]
     """
     @functools.wraps(func)
-    def wrapper_make_connection(*args, **kwargs) -> Callable:
+    def wrapper_make_connection(username: str) -> Callable:
+        action: Callable
         try:
             conn = sqlite3.connect(db_name)
             c = conn.cursor()
-            someNum = 23
-            for key, value in kwargs.items():
-                print(f" The key is = {key}: and the value is = {value}")
-            action = func(someNum, *args, **kwargs)
-            # conn.commit()
+            action = func(username, c)
+            conn.commit()
         except sqlite3.DatabaseError as e:
             print(e)
         except sqlite3.DataError as e:
@@ -82,9 +80,7 @@ def select_existing_user(user: User) -> None:
     conn = sqlite3.connect(db_name)
     c = conn.cursor()
     # match selected user to the one in the database
-
     # set the current user to the selected user
-
     pass
 
 
@@ -94,9 +90,7 @@ def select_new_user() -> None:
     c = conn.cursor()
     for row in c.execute('SELECT * FROM users'):
         print(row)
-
     # write use to the database
-
     # set the current user to the selected user
     pass
 
@@ -115,13 +109,11 @@ def create_user(username: str, *args) -> None:
     global current_user
     current_user = new_user
     user_list.append(new_user)
+    print(f"Username is {username}")
 
-    for arg in args:
-        print("If this is successful it should print my number")
-        print(arg)
-
-    # # Create a new user
-    # c.execute("INSERT INTO users VALUES (?)", current_user.username)
+    c: sqlite3.Cursor = args[0]
+    # f string is less secure but it worked so...
+    c.execute(f"INSERT INTO users VALUES ('{current_user.username}')")
 
 
 def create_todo(title: str, description: str) -> None:
