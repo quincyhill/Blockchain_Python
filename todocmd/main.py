@@ -34,13 +34,23 @@ def introduction() -> None:
             if username != user.username:
                 create_user(username)
                 print(f"Created new user \nHello {username}")
+                break
             else:
                 current_user = user
                 print(f"Hello there: {username}")
+                break
 
 
 def create_user(username: str) -> None:
     conn = sqlite3.connect(db_name)
+    c = conn.cursor()
+
+    # Create a new user
+    c.execute(f"INSERT INTO users VALUES ('{username}')")
+
+    conn.commit()
+    conn.close()
+
     new_user = User(username)
     current_user = new_user
     user_list.append(new_user)
@@ -50,10 +60,28 @@ def create_todo(title: str, description: str) -> None:
     new_task = Todo(title, description)
 
 
+def init_users_and_todos() -> None:
+    try:
+        conn = sqlite3.connect(db_name)
+    except sqlite3.Error as e:
+        print(e)
+    c = conn.cursor()
+    # Create the table for users
+    c.execute('''CREATE TABLE users (username text)
+    ''')
+    # Create the table for todos
+    c.execute('''CREATE TABLE todos (name text, description text)
+    ''')
+    conn.commit()
+    conn.close()
+
+
 def init_database() -> None:
     if not os.path.exists(db_name):
         with open(db_name, 'w') as f:
-            pass
+            init_users_and_todos()
+    else:
+        pass
 
 
 def run() -> None:
@@ -64,6 +92,7 @@ def run() -> None:
     number = 0
     while not has_quit:
         number += 1
+        introduction()
         if number == 4:
             for user in user_list:
                 print(user.username)
