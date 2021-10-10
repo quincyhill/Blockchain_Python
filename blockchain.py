@@ -66,7 +66,7 @@ class Blockchain():
         return proof
 
     @property
-    def last_block(self): 
+    def last_block(self) -> dict: 
         # Returns the last block in the chain
         return self.chain[-1]
 
@@ -105,7 +105,8 @@ blockchain = Blockchain()
 
 @app.route("/", methods=["GET"])
 def home():
-    text = {"hey": "there", "kind": len("rejkl324jklewjrkewl;")}
+    # Ignore this its just to test the web server
+    text = {"hey": "there", "the": "server", "is": "running!", "test_val" : len("what are you looking at")}
     response = jsonify(text)
     return response, 200
 
